@@ -3,6 +3,8 @@ td=$(dirname $0)
 cd $td
 td=$(pwd)
 
+default_locations="/usr/share/jEdit /Applications/jEdit.app/Contents/Resources/Java"
+
 # source properties
 source $td/build-defaults.properties
 if [ -f "$td/build.properties" ]; then
@@ -63,9 +65,14 @@ do_build() {
 do_install() {
     local program_dir="$1"
     if [ -z "$program_dir" ]; then
-        # ubuntu location
-        program_dir=/usr/share/jEdit
+		for program_dir in $default_locations
+		do
+			if [ -f "$program_dir/jedit.jar" ]; then
+				break
+			fi
+		done
     fi
+
     local jedit_jar=$program_dir/jedit.jar
     local jedit_orig_jar=${jedit_jar}.distorig
     local jedit_build_jar=$checkout_dir/build/jedit.jar
