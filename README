@@ -10,6 +10,19 @@ BUT, there are some things about it that make me go stark raving mad.  This
 little git repo contains my patches, mode updates and a convenient script
 that checks out, builds and installs the updates on a computer.
 
+Building/Installing
+===================
+Check that the tag referenced in build-defaults.properties matches your installed
+jEdit version.  If not, create a build.properties and override the tag name.
+
+Then run the following:
+    ./patchjedit patch
+    ./patchjedit install <jedit install location>
+    
+The install step must be run as root if your user doesn't have access to the
+jedit install location.
+
+
 Hacks
 =====
 1. Explicit Electric Keys in Modes
