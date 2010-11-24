@@ -1,0 +1,174 @@
+#!/bin/bash
+td=$(dirname $0)
+cd $td
+td=$(pwd)
+
+# source properties
+source $td/build-defaults.properties
+if [ -f "$td/build.properties" ]; then
+    source $td/build.properties
+fi
+
+# set variables
+checkout_dir=$td/build/$jedit_tag
+if [ $jedit_tag == "trunk" ]; then
+    svn_url="http://jedit.svn.sourceforge.net/svnroot/jedit/jEdit/trunk"
+else
+    svn_url="http://jedit.svn.sourceforge.net/svnroot/jedit/jEdit/tags/$jedit_tag"
+fi
+
+# get command
+command="$1"
+shift
+
+die() {
+    echo "FATAL: $1"
+    exit 10
+}
+
+assert_not_root() {
+    if [ "$(whoami)" == "root" ]; then
+        die "This command cannot be run as root"
+    fi
+}
+
+do_checkout() {
+    assert_not_root
+    if [ -d "$checkout_dir" ]; then
+        echo "Not checking out because $checkout_dir already exists"
+    else
+        mkdir -p $(dirname $checkout_dir)
+        echo "Checking out $svn_url to $checkout_dir"
+        svn checkout $svn_url $checkout_dir || die "Error checking out $svn_url"
+    fi
+}
+
+do_revert() {
+    assert_not_root
+    do_checkout
+    
+    echo "Reverting all files in $checkout_dir"
+    svn revert -R $checkout_dir
+}
+
+do_build() {
+    assert_not_root
+    do_checkout
+    pushd $checkout_dir >/dev/null
+    echo "Building jedit with ant $(which ant)"
+    ant clean build || die "Error building"
+    popd >/dev/null
+}
+
+do_install() {
+    local program_dir="$1"
+    if [ -z "$program_dir" ]; then
+        # ubuntu location
+        program_dir=/usr/share/jEdit
+    fi
+    local jedit_jar=$program_dir/jedit.jar
+    local jedit_orig_jar=${jedit_jar}.distorig
+    local jedit_build_jar=$checkout_dir/build/jedit.jar
+    local mode_file
+    
+    if ! [ -f $jedit_jar ]; then
+        die "Jedit jar file not found at $jedit_jar (specify program directory as argument)"
+    fi
+    
+    # backup
+    if ! [ -f $jedit_orig_jar ]; then
+        echo "Backing up original $jedit_jar to $jedit_orig_jar"
+        cp $jedit_jar $jedit_orig_jar || die "Unable to create backup file (check permissions)"
+    fi
+    
+    # verify
+    if ! [ -f $jedit_build_jar ]; then
+        die "No built jedit.jar found.  Run ./patchjedit build first"
+    fi
+    
+    # copy
+    echo "Updating $jedit_jar"
+    cp $jedit_build_jar $jedit_jar || die "Unable to update file $jedit_jar"
+    
+    # install modes
+    if ! [ -d "$program_dir/modes" ]; then
+        die "No modes directory in jedit dir"
+    fi
+    
+    for mode_file in $td/modes/*.xml
+    do
+        if [ -f $program_dir/modes/$(basename $mode_file) ] && ! [ -f $program_dir/modes/$(basename $mode_file).distorig ]; then
+            echo "Backing up mode $(basename $mode_file)"
+            cp $program_dir/modes/$(basename $mode_file) $program_dir/modes/$(basename $mode_file).distorig || die "Cannot create backup"
+        fi
+        echo "Updating mode $(basename $mode_file)"
+        cp $mode_file $program_dir/modes || die "Cannot update mode $program_dir/modes/$(basename $mode_file)"
+    done
+}
+
+do_makepatch() {
+    local patchname="$1"
+    if [ -z "$patchname" ]; then
+        die "Must specify name of patch as argument"
+    fi
+    local patchfile=$td/patches/$patchname.diff
+    
+    if [ -f "$patchfile" ]; then
+        die "Patch file $patchfile already exists"
+    fi
+    
+    echo "Saving patch to $patchfile"
+    pushd $checkout_dir >/dev/null
+    ( svn diff > $patchfile ) || die "Unable to generate patch" 
+    popd >/dev/null
+}
+
+do_patch() {
+    local i
+    
+    do_revert
+    
+    for i in $td/patches/*.diff
+    do
+        echo "Applying patch $i"
+        pushd $checkout_dir >/dev/null
+        patch -p0 < $i || die "Unable to apply patch $i"
+        popd >/dev/null
+    done
+    
+    do_build
+}
+
+# switch command
+case "$command" in
+    checkout)
+        do_checkout "$@"
+        ;;
+    
+    revert)
+        do_revert "$@"
+        ;;
+    
+    patch)
+        do_patch "$@"
+        ;;
+        
+    build)
+        do_build "$@"
+        ;;
+        
+    install)
+        do_install "$@"
+        ;;
+        
+    makepatch)
+        do_makepatch "$@"
+        ;;
+        
+    *)
+        echo "Unrecognized command: $command"
+        exit 1
+        ;;
+esac
+
+

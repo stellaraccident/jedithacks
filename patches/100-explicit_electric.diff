@@ -1,0 +1,45 @@
+Index: org/gjt/sp/jedit/Mode.java
+===================================================================
+--- org/gjt/sp/jedit/Mode.java	(revision 19010)
++++ org/gjt/sp/jedit/Mode.java	(working copy)
+@@ -296,21 +296,27 @@
+ 	{
+ 		if (electricKeys == null)
+ 		{
+-			String[] props = {
+-				"indentOpenBrackets",
+-				"indentCloseBrackets",
+-				"electricKeys"
+-			};
++			String explicitElectricKeys = (String) getProperty("explicitElectricKeys");
++			if (explicitElectricKeys!=null) {
++				// Don't delegate to the three properties below.  Just take this one
++				electricKeys = explicitElectricKeys;
++			} else {
++				String[] props = {
++					"indentOpenBrackets",
++					"indentCloseBrackets",
++					"electricKeys"
++				};
+ 
+-			StringBuilder buf = new StringBuilder();
+-			for(int i = 0; i < props.length; i++)
+-			{
+-				String prop = (String) getProperty(props[i]);
+-				if (prop != null)
+-					buf.append(prop);
++				StringBuilder buf = new StringBuilder();
++				for(int i = 0; i < props.length; i++)
++				{
++					String prop = (String) getProperty(props[i]);
++					if (prop != null)
++						buf.append(prop);
++				}
++
++				electricKeys = buf.toString();
+ 			}
+-
+-			electricKeys = buf.toString();
+ 		}
+ 
+ 		return (electricKeys.indexOf(ch) >= 0);
