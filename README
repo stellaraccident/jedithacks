@@ -1,0 +1,25 @@
+jedithacks
+==========
+
+In general, I like jEdit a lot.  It's my favorite editor and I know that
+whatever system I go to, it will be available (Mac, Linux, Windows).  There
+are platform specific editors that I sometimes like better, but its the best
+to be everywhere.
+
+BUT, there are some things about it that make me go stark raving mad.  This
+little git repo contains my patches, mode updates and a convenient script
+that checks out, builds and installs the updates on a computer.
+
+Hacks
+=====
+1. Explicit Electric Keys in Modes
+jEdit makes some crazy assumptions on what keys you want to cause an immediate
+re-indent of the current line and there is no way to override in a mode file.
+Most C-like languages end up re-indenting on {}[]: characters.  I find that
+this is always messing me up, especially with respect to the open brace and
+bracket characters.  The patch 100-explicit_electric.diff makes some source level
+changes to support an explicitElectricKeys mode property that, if present,
+completely trumps all other logic for determining electric keys.  The modes I've
+packaged use this property to only enable certain keys for re-indent.
+
+
